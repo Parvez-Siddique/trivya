@@ -1,0 +1,49 @@
+services:
+
+  db:
+    image: postgres:18
+    container_name: trivya-db
+
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME}
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+  backend:
+    build:
+      context: ./django-project
+
+    container_name: trivya-backend
+
+    env_file:
+      - ./django-project/.env
+
+    volumes:
+      - ./django-project:/app
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./trivya-website
+
+    container_name: trivya-frontend
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
