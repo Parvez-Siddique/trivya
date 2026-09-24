@@ -25,13 +25,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-7nbd1bbk!1p08lo@i=dfje43p9dw7=^iautnk!#(0!c82xfg6v'
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG=True
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-ALLOWED_HOSTS = []
+CORS_ALLOWED_ORIGINS = [
+    "https://trivyacare.com",
+    "http://localhost:3000",
+]
+
+ALLOWED_HOSTS = [
+    "trivya-backend-production.up.railway.app",
+    "localhost",
+    "127.0.0.1",
+]
 
 
 # Application definition
@@ -44,7 +52,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'trivyaserver',
-
+    'corsheaders',
     'rest_framework',
     'knox'
 ]
@@ -53,10 +61,15 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://trivyacare.com",
 ]
 
 REST_FRAMEWORK = {

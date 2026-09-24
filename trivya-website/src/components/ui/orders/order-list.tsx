@@ -3,17 +3,11 @@
 
 import { useState } from "react";
 import { X, Package } from "lucide-react";
-
-import type {
-  CustomerOrderListDTO,
-} from "@/app/(public)/my-orders/action";
-
-import Datatable, {
-  Column,
-  Pagination,
-} from "@/components/ui/datatable";
-
-import { SessionUser } from "@/lib/session";
+import { Button } from "@/components/ui/button"
+import {CustomerOrderListDTO, updateOrderStatus, getCustomerOrders} from "@/app/(public)/my-orders/action";
+import Datatable, {Column, Pagination} from "@/components/ui/datatable";
+import OrderStatusModal from "@/components/ui/order-status-modal";
+import { toast } from "sonner";
 
 type CustomerOrdersProps = {
   customerOrders: CustomerOrderListDTO[] | undefined | null;
@@ -21,97 +15,204 @@ type CustomerOrdersProps = {
   onPageChange?: (page: number) => void;
 };
 
-/**
- * Expanded Order Details
- */
-function OrderDetailsRow({
-  order,
-}: {
+
+
+function OrderDetailsRow({order}: {
   order: CustomerOrderListDTO;
 }) {
   if (!order.order_details?.length) {
     return (
-      <div className="border-t bg-muted/30 px-6 py-5 text-sm text-muted-foreground">
-        No items found for this order.
+      <div className="border-t bg-muted/20 px-6 py-6">
+        <div className="flex items-center justify-center rounded-xl border border-dashed bg-background px-6 py-8">
+          <div className="text-center">
+            <Package className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+
+            <p className="text-sm font-medium text-muted-foreground">
+              No items found for this order.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
+  const orderTotal = order.order_details.reduce(
+    (total, detail) =>
+      total +
+      Number(detail.price || 0) * Number(detail.quantity || 0),
+    0
+  );
+
+  const totalQuantity = order.order_details.reduce(
+    (total, detail) =>
+      total + Number(detail.quantity || 0),
+    0
+  );
+
   return (
-    <div className="border-t bg-muted/30 p-5">
-      <h4 className="mb-4 text-sm font-semibold">
-        Order Items
-      </h4>
+    <div className="border-t bg-muted/20">
+      <div className="p-4 sm:p-6">
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[650px] overflow-hidden rounded-lg border bg-background">
+        {/* Header */}
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Order Details
+            </p>
 
-          {/* Header */}
-          <div className="grid grid-cols-[1fr_120px_140px] border-b bg-muted/40 px-4 py-3 text-xs font-semibold text-muted-foreground">
-            <div>Product</div>
-            <div className="text-center">Quantity</div>
-            <div className="text-right">Price</div>
+            <h4 className="mt-1 text-base font-semibold text-foreground">
+              {order.order_details.length}{" "}
+              {order.order_details.length === 1
+                ? "Product"
+                : "Products"}
+            </h4>
           </div>
 
-          {/* Products */}
-          {order.order_details.map((detail) => (
-            <div
-              key={detail.id}
-              className="grid grid-cols-[1fr_120px_140px] items-center gap-4 border-b p-4 last:border-b-0"
-            >
-              {/* Product */}
-              <div className="flex items-center gap-3">
-
-                {/* Product Image */}
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-muted">
-                  {detail.product_image ? (
-                    <img
-                      src={detail.product_image}
-                      alt={detail.product_name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Package className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Product Name */}
-                <div>
-                  <p className="font-medium">
-                    {detail.product_name}
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    Product ID: {detail.product}
-                  </p>
-                </div>
-              </div>
-
-              {/* Quantity */}
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">
-                  Quantity
-                </p>
-
-                <p className="mt-1 font-medium">
-                  {detail.quantity}
-                </p>
-              </div>
-
-              {/* Price */}
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">
-                  Price
-                </p>
-
-                <p className="mt-1 font-medium">
-                  ₹{Number(detail.price).toFixed(2)}
-                </p>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="rounded-full bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm">
+              {totalQuantity}{" "}
+              {totalQuantity === 1 ? "Item" : "Items"}
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* Product List */}
+        <div className="space-y-3">
+          {order.order_details.map((detail) => {
+            const price = Number(detail.price || 0);
+            const quantity = Number(detail.quantity || 0);
+            const itemTotal = price * quantity;
+
+            return (
+              <div
+                key={detail.id}
+                className="
+                  group
+                  rounded-2xl
+                  border
+                  bg-background
+                  p-4
+                  shadow-sm
+                  transition-all
+                  duration-200
+                  hover:shadow-md
+                "
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+
+                  {/* Product */}
+                  <div className="flex min-w-0 flex-1 items-center gap-4">
+
+                    {/* Image */}
+                    <div
+                      className="
+                        h-16
+                        w-16
+                        shrink-0
+                        overflow-hidden
+                        rounded-xl
+                        border
+                        bg-muted/40
+                        sm:h-20
+                        sm:w-20
+                      "
+                    >
+                      {detail.product_image ? (
+                        <img
+                          src={detail.product_image}
+                          alt={detail.product_name}
+                          className="h-full w-full object-contain p-2"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <Package className="h-6 w-6 text-muted-foreground/50" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Name */}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground sm:text-base">
+                        {detail.product_name}
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Product ID: {detail.product}
+                      </p>
+
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+
+                        {/* Size */}
+                        <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                          Size: {detail.product_size || "N/A"}
+                        </span>
+
+                        {/* Quantity */}
+                        <span className="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                          Qty: {quantity}
+                        </span>
+
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Price Section */}
+                  <div
+                    className="
+                      flex
+                      items-center
+                      justify-between
+                      gap-6
+                      border-t
+                      pt-3
+                      sm:min-w-[180px]
+                      sm:border-t-0
+                      sm:pt-0
+                      sm:text-right
+                    "
+                  >
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Unit Price
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium">
+                        ₹{price.toFixed(2)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Total
+                      </p>
+
+                      <p className="mt-1 text-base font-bold text-foreground">
+                        ₹{itemTotal.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Order Total */}
+        <div className="mt-5 flex flex-col gap-3 rounded-2xl border bg-background p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Order Total
+            </p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              {totalQuantity}{" "}
+              {totalQuantity === 1 ? "item" : "items"} in this order
+            </p>
+          </div>
+
+          <p className="text-xl font-bold text-foreground">
+            ₹{orderTotal.toFixed(2)}
+          </p>
         </div>
       </div>
     </div>
@@ -119,21 +220,14 @@ function OrderDetailsRow({
 }
 
 export default function OrdersList({customerOrders, pagination, onPageChange}: CustomerOrdersProps) {
-  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(null);
 
-  const handleCancelOrder = async (orderId: number) => {
-    try {
-      setCancellingOrderId(orderId);
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<number>(0);
 
-    } catch (error) {
-      console.error(
-        "Failed to cancel order:",
-        error
-      );
-    } finally {
-      setCancellingOrderId(null);
-    }
-  };
+  const [paymentStatus, setPaymentStatus] = useState<string>("");
+  const [orderStatus, setOrderStatus] = useState<string>("");
+
+  const [customerOrderList, setCustomerOrderList] = useState<CustomerOrderListDTO[] | null | undefined>(customerOrders);
 
   const columns: Column<CustomerOrderListDTO>[] = [
     {
@@ -164,6 +258,30 @@ export default function OrdersList({customerOrders, pagination, onPageChange}: C
           {String(value)}
         </span>
       ),
+    },
+
+    {
+      key: "order_status",
+      title: "Order Status",
+      render: (value) => {
+        const status = String(value).toUpperCase();
+
+        return (
+          <span
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
+              status === "PENDING"
+                ? "bg-yellow-100 text-yellow-700"
+                : status === "PAID"
+                ? "bg-green-100 text-green-700"
+                : status === "CANCELLED"
+                ? "bg-red-100 text-red-700"
+                : "bg-gray-100 text-gray-700"
+            }`}
+          >
+            {status}
+          </span>
+        );
+      },
     },
 
     {
@@ -219,29 +337,100 @@ export default function OrdersList({customerOrders, pagination, onPageChange}: C
         <div className="flex items-center gap-2">
 
           {order.payment_status !== "CANCELLED" && (
-            <button
-              type="button"
-              onClick={() =>
-                handleCancelOrder(order.id)
-              }
-              disabled={cancellingOrderId === order.id}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-red-200 px-3 text-sm font-medium text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
-              title="Cancel Order"
-            >
-              <X className="h-4 w-4" />
 
-              <span>
-                {cancellingOrderId === order.id
-                  ? "Cancelling..."
-                  : "Cancel Order"}
-              </span>
-            </button>
+            <>
+
+              <Button
+                className="cursor-pointer"
+                onClick={() => {
+                  setSelectedOrderId(order.id);
+                  setStatusModalOpen(true);
+                }}
+              >
+                Update Status
+              </Button>
+            
+            </>
+            
           )}
 
         </div>
       ),
     },
   ];
+
+
+  const fetchOrdersList = async () => {
+    try {
+      const response = await getCustomerOrders({
+        page: 1,
+        page_size: 10,
+      });
+
+      setCustomerOrderList(response.data);
+    } catch (error) {
+      console.error("Failed to fetch customer orders:", error);
+    }
+  };
+
+
+
+  const order_status_list = [
+    {
+      value : "PENDING",
+      label : "Pending"
+    },
+    {
+      value : "CONFIRMED",
+      label : "Confirmed"
+    },
+
+     {
+      value : "DELIVERED",
+      label : "Delivered"
+    }
+  ]
+
+  const payment_status_list = [
+    {
+      value : "PENDING",
+      label : "Pending"
+    },
+    {
+      value : "PAYMENT_CONFIRMED",
+      label : "Payment Confirmed"
+    },
+
+    {
+      value : "PAYMENT_NOT_RECEIVED",
+      label : "Payment Not Received"
+    }
+  ]
+
+
+  const handleStatusUpdate = async () => {
+
+    const response = await updateOrderStatus({
+      order_id: selectedOrderId,
+      payment_status: paymentStatus,
+      order_status: orderStatus,
+    });
+
+    if (!response.success) {
+      toast.error("Status Update Failed", {
+        description: "Unable to update the order status.",
+      });
+      return;
+    }
+
+    toast.success("Status Updated Successfully", {
+      description: "The order status has been updated successfully.",
+    });
+
+    await fetchOrdersList();
+
+    setStatusModalOpen(false);
+  };
 
   return (
     <div className="flex flex-col w-full justify-center px-4 py-6">
@@ -259,7 +448,7 @@ export default function OrdersList({customerOrders, pagination, onPageChange}: C
         
       <div className="min-w-[1000px]">
         <Datatable
-          data={customerOrders || []}
+          data={customerOrderList || []}
           columns={columns}
           pagination={pagination}
           onPageChange={onPageChange}
@@ -271,6 +460,19 @@ export default function OrdersList({customerOrders, pagination, onPageChange}: C
         />
 
       </div>
+
+
+      <OrderStatusModal
+        open={statusModalOpen}
+        setOpen={setStatusModalOpen}
+        payment_status_value={paymentStatus}
+        payment_status_state={setPaymentStatus}
+        order_status_value={orderStatus}
+        order_status_state={setOrderStatus}
+        paymentStatusList={payment_status_list}
+        orderStatusList={order_status_list}
+        onSave={handleStatusUpdate}
+      />
 
     </div>
   );

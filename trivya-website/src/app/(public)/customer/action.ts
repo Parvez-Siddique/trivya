@@ -9,8 +9,6 @@ export type CreateUserPayload = {
   lastName: string;
   email: string;
   phoneNumber: string;
-  username: string;
-  password: string;
   user_type: "ADMIN" | "CUSTOMER";
 };
 
@@ -114,8 +112,6 @@ export async function loginCustomer(
     };
 
   } catch (error) {
-
-    console.log(error,"KOKOKOKOKOKSOSKJIJ")
 
     return {
       success: false,

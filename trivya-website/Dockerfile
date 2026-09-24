@@ -10,6 +10,11 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-EXPOSE 3000
+ARG BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL
 
-CMD ["pnpm", "dev", "--hostname", "0.0.0.0"]
+RUN pnpm build
+
+EXPOSE 8080
+
+CMD ["sh", "-c", "pnpm start --hostname 0.0.0.0 --port ${PORT:-8080}"]
