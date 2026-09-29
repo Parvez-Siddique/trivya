@@ -11,7 +11,7 @@ export default function BannerSection() {
         {/* Large screens */}
         <source
           media="(min-width: 1024px)"
-          srcSet="/product/banner-medium.jpeg"
+          srcSet="/product/banner-mediium.jpeg"
         />
 
         {/* Medium screens */}
